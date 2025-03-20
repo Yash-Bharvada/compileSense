@@ -28,77 +28,195 @@ export const executeCode = async (
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 1500));
   
-  // Check if the code contains a fibonacci function
-  const hasFibonacci = code.includes('fibonacci');
-  
-  // Check if code contains print or System.out or console.log or stdio
-  const hasPrint = language === 'python' && code.includes('print');
-  const hasSystemOut = language === 'java' && code.includes('System.out');
-  const hasCout = language === 'cpp' && code.includes('cout');
-  const hasPrintf = (language === 'c' || language === 'cpp') && code.includes('printf');
-  
-  // For demo purposes, randomly generate errors sometimes (but less frequently)
-  const shouldFail = Math.random() < 0.15 && !hasFibonacci;
-  
-  if (shouldFail) {
+  // Validate code to detect common syntax errors
+  try {
+    const syntaxError = detectSyntaxErrors(code, language);
+    if (syntaxError) {
+      return {
+        status: 'error',
+        output: syntaxError,
+        executionTime: Math.floor(Math.random() * 100) + 50
+      };
+    }
+    
+    // Parse and execute the code
+    const output = parseAndExecuteCode(code, language);
+    
+    return {
+      status: 'success',
+      output: output,
+      executionTime: Math.floor(Math.random() * 200) + 100
+    };
+  } catch (error) {
     return {
       status: 'error',
-      output: language === 'python' 
-        ? 'IndentationError: unexpected indent'
-        : language === 'java'
-          ? 'error: class Main is public, should be declared in a file named Main.java'
-          : language === 'cpp'
-            ? 'error: expected \';\' before \'}\' token'
-            : 'error: expected \';\' at the end of declaration',
+      output: error instanceof Error ? error.message : String(error),
       executionTime: Math.floor(Math.random() * 100) + 50
     };
   }
-  
-  // Generate appropriate output based on code content
-  let output = '';
-  
-  if (hasFibonacci) {
-    // If code has fibonacci, return the fibonacci calculation result
-    if (code.includes('fibonacci(10)') || code.includes('fibonacci (10)')) {
-      output = '55';
-    } else if (code.includes('fibonacci(5)') || code.includes('fibonacci (5)')) {
-      output = '5';
-    } else if (code.includes('fibonacci(8)') || code.includes('fibonacci (8)')) {
-      output = '21';
-    } else if (code.includes('fibonacci(15)') || code.includes('fibonacci (15)')) {
-      output = '610';
-    } else {
-      output = '55 (Default fibonacci(10) result)';
+};
+
+// Helper function to detect basic syntax errors
+const detectSyntaxErrors = (code: string, language: ProgrammingLanguage): string | null => {
+  // Check for common syntax issues based on language
+  if (language === 'python') {
+    if (code.includes('print(') && !code.includes(')')) {
+      return 'SyntaxError: unexpected EOF while parsing';
     }
-  } else if (hasPrint || hasSystemOut || hasCout || hasPrintf) {
-    // Extract what's being printed
-    let printedContent = '';
-    
-    if (language === 'python' && hasPrint) {
-      const printMatch = code.match(/print\s*\(\s*["'](.+?)["']\s*\)/);
-      printedContent = printMatch ? printMatch[1] : 'Output from Python program';
-    } else if (language === 'java' && hasSystemOut) {
-      const printMatch = code.match(/System\.out\.println\s*\(\s*["'](.+?)["']\s*\)/);
-      printedContent = printMatch ? printMatch[1] : 'Output from Java program';
-    } else if (language === 'cpp' && hasCout) {
-      const printMatch = code.match(/cout\s*<<\s*["'](.+?)["']/);
-      printedContent = printMatch ? printMatch[1] : 'Output from C++ program';
-    } else if (hasPrintf) {
-      const printMatch = code.match(/printf\s*\(\s*["'](.+?)["']/);
-      printedContent = printMatch ? printMatch[1] : 'Output from C program';
+    if ((code.includes('def ') || code.includes('if ') || code.includes('for ')) && !code.includes(':')) {
+      return 'SyntaxError: expected ":"';
+    }
+  } else if (language === 'java') {
+    if ((code.match(/\{/g) || []).length !== (code.match(/\}/g) || []).length) {
+      return 'error: mismatched curly braces';
+    }
+    if (!code.includes('class')) {
+      return 'error: class declaration missing';
+    }
+    if (code.includes('public class') && !code.includes('public static void main')) {
+      return 'error: main method missing';
+    }
+  } else if (language === 'cpp' || language === 'c') {
+    if ((code.match(/\{/g) || []).length !== (code.match(/\}/g) || []).length) {
+      return 'error: mismatched curly braces';
     }
     
-    output = printedContent;
-  } else {
-    // Default output if no recognizable patterns
-    output = 'Program executed successfully with no output';
+    const hasPrintf = code.includes('printf');
+    const hasCout = code.includes('cout');
+    
+    if (language === 'cpp' && hasCout && !code.includes('iostream')) {
+      return 'error: iostream header missing for cout';
+    }
+    
+    if (language === 'c' && hasPrintf && !code.includes('stdio.h')) {
+      return 'error: stdio.h header missing for printf';
+    }
   }
   
-  return {
-    status: 'success',
-    output: output,
-    executionTime: Math.floor(Math.random() * 200) + 100
+  return null;
+};
+
+// Parse and execute the code
+const parseAndExecuteCode = (code: string, language: ProgrammingLanguage): string => {
+  // Check for Fibonacci function and execution
+  if (code.includes('fibonacci') || code.includes('Fibonacci')) {
+    let fibonacciArg: number | null = null;
+    
+    // Try to extract the fibonacci argument
+    const fibRegex = /fibonacci\s*\(\s*(\d+)\s*\)/i;
+    const match = code.match(fibRegex);
+    if (match && match[1]) {
+      fibonacciArg = parseInt(match[1], 10);
+    }
+    
+    if (fibonacciArg !== null) {
+      // Calculate actual fibonacci result
+      return calculateFibonacci(fibonacciArg).toString();
+    }
+  }
+  
+  // Extract print statements based on language
+  if (language === 'python') {
+    const printRegex = /print\s*\(\s*["']?(.*?)["']?\s*\)/g;
+    let printMatch;
+    let output = '';
+    
+    while ((printMatch = printRegex.exec(code)) !== null) {
+      output += printMatch[1] + '\n';
+    }
+    
+    if (output) return output.trim();
+  } 
+  else if (language === 'java') {
+    const printRegex = /System\.out\.println\s*\(\s*["']?(.*?)["']?\s*\)/g;
+    let printMatch;
+    let output = '';
+    
+    while ((printMatch = printRegex.exec(code)) !== null) {
+      output += printMatch[1] + '\n';
+    }
+    
+    if (output) return output.trim();
+
+    // Check for System.out.print (without ln)
+    const printNoLnRegex = /System\.out\.print\s*\(\s*["']?(.*?)["']?\s*\)/g;
+    let outputNoLn = '';
+    
+    while ((printMatch = printNoLnRegex.exec(code)) !== null) {
+      outputNoLn += printMatch[1];
+    }
+    
+    if (outputNoLn) return outputNoLn;
+  } 
+  else if (language === 'cpp') {
+    const printRegex = /cout\s*<<\s*["']?(.*?)["']?(?:\s*<<\s*endl)?/g;
+    let printMatch;
+    let output = '';
+    
+    while ((printMatch = printRegex.exec(code)) !== null) {
+      output += printMatch[1] + '\n';
+    }
+    
+    if (output) return output.trim();
+  } 
+  else if (language === 'c') {
+    const printRegex = /printf\s*\(\s*["']([^%]*?)["'](?:\s*,\s*.*?)?\s*\)/g;
+    let printMatch;
+    let output = '';
+    
+    while ((printMatch = printRegex.exec(code)) !== null) {
+      output += printMatch[1] + '\n';
+    }
+    
+    // Handle printf with format specifiers
+    if (!output) {
+      const formatPrintRegex = /printf\s*\(\s*["'](.*?)["']\s*,\s*(.*?)\s*\)/g;
+      while ((printMatch = formatPrintRegex.exec(code)) !== null) {
+        const formatStr = printMatch[1];
+        const args = printMatch[2].split(',').map(arg => arg.trim());
+        
+        // Very simple format string parser
+        let formattedOutput = formatStr;
+        if (formattedOutput.includes('%d')) {
+          formattedOutput = formattedOutput.replace(/%d/, args[0] || '0');
+        }
+        if (formattedOutput.includes('%s')) {
+          formattedOutput = formattedOutput.replace(/%s/, args[0] || 'string');
+        }
+        if (formattedOutput.includes('%f')) {
+          formattedOutput = formattedOutput.replace(/%f/, args[0] || '0.0');
+        }
+        
+        output += formattedOutput + '\n';
+      }
+    }
+    
+    if (output) return output.trim();
+  }
+  
+  // If we can't meaningfully parse the program, provide a default message
+  const defaultMap: Record<ProgrammingLanguage, string> = {
+    python: 'Program executed successfully (no print statements found)',
+    java: 'Program compiled and ran successfully (no output statements found)',
+    cpp: 'Program executed successfully (no output statements found)',
+    c: 'Program executed successfully (no output statements found)'
   };
+  
+  return defaultMap[language];
+};
+
+// Helper function to actually calculate fibonacci
+const calculateFibonacci = (n: number): number => {
+  if (n <= 0) return 0;
+  if (n === 1) return 1;
+  
+  let a = 0, b = 1;
+  for (let i = 2; i <= n; i++) {
+    const c = a + b;
+    a = b;
+    b = c;
+  }
+  return b;
 };
 
 // Simulate complexity analysis with more accurate evaluations
