@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,18 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				editor: {
+					bg: '#FFFFFF',
+					line: '#F5F5F7',
+					text: '#1D1D1F',
+					comment: '#8E8E93',
+					keyword: '#0066CC',
+					string: '#32936F',
+					function: '#5E5CE6',
+					number: '#C13584',
+					operator: '#FF9500',
+					variable: '#3A3A3C'
 				}
 			},
 			borderRadius: {
@@ -70,25 +83,51 @@ export default {
 			},
 			keyframes: {
 				'accordion-down': {
-					from: {
-						height: '0'
-					},
-					to: {
-						height: 'var(--radix-accordion-content-height)'
-					}
+					from: { height: '0' },
+					to: { height: 'var(--radix-accordion-content-height)' }
 				},
 				'accordion-up': {
-					from: {
-						height: 'var(--radix-accordion-content-height)'
-					},
-					to: {
-						height: '0'
-					}
+					from: { height: 'var(--radix-accordion-content-height)' },
+					to: { height: '0' }
+				},
+				'fade-in': {
+					from: { opacity: '0' },
+					to: { opacity: '1' }
+				},
+				'fade-out': {
+					from: { opacity: '1' },
+					to: { opacity: '0' }
+				},
+				'slide-in': {
+					from: { transform: 'translateY(10px)', opacity: '0' },
+					to: { transform: 'translateY(0)', opacity: '1' }
+				},
+				'slide-out': {
+					from: { transform: 'translateY(0)', opacity: '1' },
+					to: { transform: 'translateY(10px)', opacity: '0' }
+				},
+				'pulse-subtle': {
+					'0%, 100%': { opacity: '1' },
+					'50%': { opacity: '0.8' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.3s ease-out',
+				'fade-out': 'fade-out 0.3s ease-out',
+				'slide-in': 'slide-in 0.4s ease-out',
+				'slide-out': 'slide-out 0.4s ease-out',
+				'pulse-subtle': 'pulse-subtle 2s ease-in-out infinite'
+			},
+			boxShadow: {
+				'subtle': '0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.1)',
+				'elevation': '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)',
+				'glass': '0 8px 32px rgba(0, 0, 0, 0.08)',
+				'glass-hover': '0 12px 40px rgba(0, 0, 0, 0.12)'
+			},
+			backdropBlur: {
+				'xs': '2px',
 			}
 		}
 	},
