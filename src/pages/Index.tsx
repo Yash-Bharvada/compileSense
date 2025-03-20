@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import CodeEditor from '@/components/CodeEditor';
@@ -12,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 const Index = () => {
-  const [language, setLanguage] = useState<ProgrammingLanguage>('javascript');
+  const [language, setLanguage] = useState<ProgrammingLanguage>('python');
   const [code, setCode] = useState('');
   const [executionResult, setExecutionResult] = useState<{
     status: 'success' | 'error' | 'running';
@@ -26,7 +25,6 @@ const Index = () => {
 
   const handleLanguageChange = (lang: ProgrammingLanguage) => {
     setLanguage(lang);
-    // Reset results when language changes
     setExecutionResult(null);
     setComplexityData(null);
     setInsights(null);
@@ -40,16 +38,13 @@ const Index = () => {
       setExecutionResult({ status: 'running', output: 'Executing code...' });
       setActiveTab('results');
       
-      // Execute code
       const result = await executeCode(code, language);
       setExecutionResult(result);
       
       if (result.status === 'success') {
-        // Get complexity analysis
         const complexity = await analyzeComplexity(code, language);
         setComplexityData(complexity);
         
-        // Get AI insights
         const aiInsights = await getAIInsights(code, language, complexity);
         setInsights(aiInsights);
         
@@ -102,7 +97,6 @@ const Index = () => {
       
       <main className="flex-1 container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Editor Section */}
           <div className="md:col-span-8 space-y-4">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-medium tracking-tight">
@@ -122,7 +116,6 @@ const Index = () => {
             />
           </div>
           
-          {/* Results Section */}
           <div className="md:col-span-4 space-y-4">
             <Tabs 
               value={activeTab} 

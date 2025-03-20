@@ -37,11 +37,13 @@ export const executeCode = async (
   if (shouldFail) {
     return {
       status: 'error',
-      output: language === 'javascript' 
-        ? 'Uncaught TypeError: Cannot read property of undefined'
-        : language === 'python'
-          ? 'IndentationError: unexpected indent'
-          : 'Compilation error',
+      output: language === 'python' 
+        ? 'IndentationError: unexpected indent'
+        : language === 'java'
+          ? 'error: class Main is public, should be declared in a file named Main.java'
+          : language === 'cpp'
+            ? 'error: expected \';\' before \'}\' token'
+            : 'error: expected \';\' at the end of declaration',
       executionTime: Math.floor(Math.random() * 100) + 50
     };
   }
@@ -113,15 +115,7 @@ export const getAIInsights = async (
         type: 'optimization',
         title: 'Use Memoization',
         description: 'The current recursive implementation recalculates the same values multiple times. Using memoization can reduce time complexity from O(2^n) to O(n).',
-        code: language === 'javascript'
-          ? `// Optimized with memoization
-function fibonacci(n, memo = {}) {
-  if (n in memo) return memo[n];
-  if (n <= 1) return n;
-  memo[n] = fibonacci(n-1, memo) + fibonacci(n-2, memo);
-  return memo[n];
-}`
-          : language === 'python'
+        code: language === 'python'
             ? `# Optimized with memoization
 def fibonacci(n, memo={}):
     if n in memo:
@@ -138,9 +132,17 @@ public static int fibonacci(int n, Map<Integer, Integer> memo) {
     memo.put(n, fibonacci(n-1, memo) + fibonacci(n-2, memo));
     return memo.get(n);
 }`
-              : `// Optimized with memoization
+              : language === 'cpp'
+                ? `// Optimized with memoization
 int fibonacci(int n, std::unordered_map<int, int>& memo) {
     if (memo.find(n) != memo.end()) return memo[n];
+    if (n <= 1) return n;
+    memo[n] = fibonacci(n-1, memo) + fibonacci(n-2, memo);
+    return memo[n];
+}`
+                : `// Optimized with memoization
+int fibonacci(int n, int memo[]) {
+    if (memo[n] != -1) return memo[n];
     if (n <= 1) return n;
     memo[n] = fibonacci(n-1, memo) + fibonacci(n-2, memo);
     return memo[n];
@@ -150,19 +152,7 @@ int fibonacci(int n, std::unordered_map<int, int>& memo) {
         type: 'optimization',
         title: 'Use Iteration Instead of Recursion',
         description: 'An iterative approach can be more efficient for calculating Fibonacci numbers, avoiding stack overhead and potential stack overflow for large inputs.',
-        code: language === 'javascript'
-          ? `// Iterative implementation
-function fibonacci(n) {
-  if (n <= 1) return n;
-  let a = 0, b = 1;
-  for (let i = 2; i <= n; i++) {
-    let c = a + b;
-    a = b;
-    b = c;
-  }
-  return b;
-}`
-          : language === 'python'
+        code: language === 'python'
             ? `# Iterative implementation
 def fibonacci(n):
     if n <= 1:
@@ -185,7 +175,19 @@ public static int fibonacci(int n) {
     }
     return b;
 }`
-              : `// Iterative implementation
+              : language === 'cpp' || language === 'c'
+                ? `// Iterative implementation
+int fibonacci(int n) {
+    if (n <= 1) return n;
+    int a = 0, b = 1;
+    for (int i = 2; i <= n; i++) {
+        int c = a + b;
+        a = b;
+        b = c;
+    }
+    return b;
+}`
+                : `// Iterative implementation
 int fibonacci(int n) {
     if (n <= 1) return n;
     int a = 0, b = 1;

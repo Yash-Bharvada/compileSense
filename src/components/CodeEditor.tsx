@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import * as monaco from 'monaco-editor';
 import { Sparkles } from 'lucide-react';
@@ -15,14 +14,6 @@ interface CodeEditorProps {
 
 // Sample code templates for each language
 const codeTemplates: Record<ProgrammingLanguage, string> = {
-  javascript: `// JavaScript Example
-function fibonacci(n) {
-  if (n <= 1) return n;
-  return fibonacci(n-1) + fibonacci(n-2);
-}
-
-// Test with n=10
-console.log(fibonacci(10));`,
   python: `# Python Example
 def fibonacci(n):
     if n <= 1:
@@ -53,15 +44,27 @@ int fibonacci(int n) {
 int main() {
     std::cout << fibonacci(10) << std::endl;
     return 0;
+}`,
+  c: `// C Example
+#include <stdio.h>
+
+int fibonacci(int n) {
+    if (n <= 1) return n;
+    return fibonacci(n-1) + fibonacci(n-2);
+}
+
+int main() {
+    printf("%d\\n", fibonacci(10));
+    return 0;
 }`
 };
 
 // Map our language IDs to Monaco's language IDs
 const languageMap: Record<ProgrammingLanguage, string> = {
-  javascript: 'javascript',
   python: 'python',
   java: 'java',
-  cpp: 'cpp'
+  cpp: 'cpp',
+  c: 'c'
 };
 
 const CodeEditor: React.FC<CodeEditorProps> = ({

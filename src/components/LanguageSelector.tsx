@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
-export type ProgrammingLanguage = 'javascript' | 'python' | 'java' | 'cpp';
+export type ProgrammingLanguage = 'python' | 'java' | 'cpp' | 'c';
 
 interface LanguageSelectorProps {
   selectedLanguage: ProgrammingLanguage;
@@ -17,10 +17,10 @@ interface LanguageSelectorProps {
 }
 
 const languages: Array<{ id: ProgrammingLanguage; name: string }> = [
-  { id: 'javascript', name: 'JavaScript' },
   { id: 'python', name: 'Python' },
   { id: 'java', name: 'Java' },
   { id: 'cpp', name: 'C++' },
+  { id: 'c', name: 'C' },
 ];
 
 const LanguageSelector: React.FC<LanguageSelectorProps> = ({
