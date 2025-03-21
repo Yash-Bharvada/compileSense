@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { Check, Clock, XCircle } from 'lucide-react';
+import { Check, Clock, XCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ExecutionResult {
-  status: 'success' | 'error' | 'running';
+  status: 'success' | 'error' | 'running' | 'timeout';
   output: string;
   executionTime?: number;
 }
@@ -23,28 +23,34 @@ const ExecutionResults: React.FC<ExecutionResultsProps> = ({ result, className }
     );
   }
 
+  // Handle empty output differently based on status
+  const formattedOutput = result.output.trim() === '' ? 
+    (result.status === 'success' ? 'Program executed without any output.' : 
+     result.status === 'error' ? 'No error details available.' : 
+     result.status === 'timeout' ? 'Execution timed out without output.' : 
+     'Running...') : 
+    result.output;
+
   const statusIcon = {
     success: <Check className="h-5 w-5 text-green-500" />,
     error: <XCircle className="h-5 w-5 text-red-500" />,
     running: <Clock className="h-5 w-5 text-primary animate-spin" />,
+    timeout: <AlertTriangle className="h-5 w-5 text-yellow-500" />
   }[result.status];
 
   const statusText = {
     success: 'Execution Successful',
     error: 'Execution Failed',
     running: 'Running...',
+    timeout: 'Execution Timed Out'
   }[result.status];
 
   const statusClass = {
     success: 'border-green-200 bg-green-50 text-green-900',
     error: 'border-red-200 bg-red-50 text-red-900',
     running: 'border-blue-200 bg-blue-50 text-blue-900',
+    timeout: 'border-yellow-200 bg-yellow-50 text-yellow-900'
   }[result.status];
-
-  // Format the output if it's empty
-  const formattedOutput = result.output.trim() === '' ? 
-    (result.status === 'success' ? 'Program executed without any output.' : result.output) : 
-    result.output;
 
   return (
     <div className={cn("rounded-lg border transition-all overflow-hidden", className)}>

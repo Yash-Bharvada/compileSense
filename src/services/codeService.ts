@@ -5,7 +5,7 @@ import { ProgrammingLanguage } from '@/components/LanguageSelector';
 // In a real application, this would connect to a backend API
 
 interface ExecutionResult {
-  status: 'success' | 'error' | 'running';
+  status: 'success' | 'error' | 'running' | 'timeout';
   output: string;
   executionTime?: number;
 }
@@ -17,46 +17,85 @@ export interface Insight {
   code?: string;
 }
 
-// Simulate code execution with more realistic output based on code
+// Maximum execution time before timeout (ms)
+const EXECUTION_TIMEOUT = 5000;
+
+// Simulate code execution with more reliable output handling
 export const executeCode = async (
   code: string, 
   language: ProgrammingLanguage
 ): Promise<ExecutionResult> => {
   console.log(`Executing ${language} code: ${code}`);
   
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  
-  // Validate code to detect common syntax errors
-  try {
-    const syntaxError = detectSyntaxErrors(code, language);
-    if (syntaxError) {
-      return {
-        status: 'error',
-        output: syntaxError,
-        executionTime: Math.floor(Math.random() * 100) + 50
-      };
-    }
-    
-    // Execute the code based on its actual content
-    const output = simulateExecution(code, language);
-    
-    return {
-      status: 'success',
-      output: output,
-      executionTime: Math.floor(Math.random() * 200) + 100
-    };
-  } catch (error) {
+  // Check for empty code
+  if (!code.trim()) {
     return {
       status: 'error',
-      output: error instanceof Error ? error.message : String(error),
-      executionTime: Math.floor(Math.random() * 100) + 50
+      output: 'No code provided for execution.',
+      executionTime: 10
     };
   }
+  
+  // Start execution timer
+  const startTime = Date.now();
+  
+  // Set up timeout protection
+  const timeoutPromise = new Promise<ExecutionResult>((resolve) => {
+    setTimeout(() => {
+      resolve({
+        status: 'timeout',
+        output: 'Execution timed out. Your code may contain an infinite loop or is taking too long to process.',
+        executionTime: EXECUTION_TIMEOUT
+      });
+    }, EXECUTION_TIMEOUT);
+  });
+  
+  // Actual execution logic
+  const executionPromise = new Promise<ExecutionResult>(async (resolve) => {
+    try {
+      // Simulate network delay for more realistic behavior
+      await new Promise(r => setTimeout(r, Math.min(800, Math.random() * 1000 + 500)));
+      
+      // Validate code to detect common syntax errors
+      const syntaxError = detectSyntaxErrors(code, language);
+      if (syntaxError) {
+        return resolve({
+          status: 'error',
+          output: syntaxError,
+          executionTime: Date.now() - startTime
+        });
+      }
+      
+      // Execute the code based on its actual content
+      const output = simulateExecution(code, language);
+      
+      resolve({
+        status: 'success',
+        output: output,
+        executionTime: Date.now() - startTime
+      });
+    } catch (error) {
+      resolve({
+        status: 'error',
+        output: error instanceof Error ? error.message : String(error),
+        executionTime: Date.now() - startTime
+      });
+    }
+  });
+  
+  // Race between execution and timeout
+  return Promise.race([executionPromise, timeoutPromise]);
 };
 
 // Helper function to detect basic syntax errors
 const detectSyntaxErrors = (code: string, language: ProgrammingLanguage): string | null => {
+  // Check for infinite loops
+  if ((language === 'python' && /while\s+True/i.test(code) && !code.includes('break')) ||
+      ((language === 'java' || language === 'cpp' || language === 'c') && 
+       /while\s*\(\s*true\s*\)/i.test(code) && !code.includes('break'))) {
+    return 'Potential infinite loop detected: while loop with no break condition';
+  }
+  
   // Check for common syntax issues based on language
   if (language === 'python') {
     if (code.includes('print(') && !code.includes(')')) {
@@ -65,12 +104,18 @@ const detectSyntaxErrors = (code: string, language: ProgrammingLanguage): string
     if ((code.includes('def ') || code.includes('if ') || code.includes('for ')) && !code.includes(':')) {
       return 'SyntaxError: expected ":"';
     }
+    if (code.includes('input(') && !code.includes(')')) {
+      return 'SyntaxError: input statement is missing closing parenthesis';
+    }
   } else if (language === 'java') {
     if ((code.match(/\{/g) || []).length !== (code.match(/\}/g) || []).length) {
       return 'error: mismatched curly braces';
     }
     if (!code.includes('class')) {
       return 'error: class declaration missing';
+    }
+    if (code.includes('public static void main') && !code.includes('{')) {
+      return 'error: main method body missing';
     }
   } else if (language === 'cpp' || language === 'c') {
     if ((code.match(/\{/g) || []).length !== (code.match(/\}/g) || []).length) {
@@ -87,14 +132,23 @@ const detectSyntaxErrors = (code: string, language: ProgrammingLanguage): string
     if (language === 'c' && hasPrintf && !code.includes('stdio.h')) {
       return 'error: stdio.h header missing for printf';
     }
+    
+    if (!code.includes('main')) {
+      return 'error: main function missing';
+    }
   }
   
   return null;
 };
 
-// Function to simulate actual code execution
+// Function to simulate actual code execution with better output guarantees
 const simulateExecution = (code: string, language: ProgrammingLanguage): string => {
-  // Extract and execute print statements first as they're the most common
+  // First check for input statements that would block execution
+  if (hasInputStatements(code, language)) {
+    return simulateInputExecution(code, language);
+  }
+  
+  // Extract print statements since they're the most common
   const printOutput = extractPrintStatements(code, language);
   if (printOutput) {
     return printOutput;
@@ -138,6 +192,70 @@ const simulateExecution = (code: string, language: ProgrammingLanguage): string 
 
   // If we can't determine what the code does, provide generic success message with example output
   return getDefaultOutput(language);
+};
+
+// Check for input statements that would block execution
+const hasInputStatements = (code: string, language: ProgrammingLanguage): boolean => {
+  if (language === 'python') {
+    return code.includes('input(');
+  } else if (language === 'java') {
+    return code.includes('Scanner') && code.includes('.next');
+  } else if (language === 'cpp') {
+    return code.includes('cin >>');
+  } else if (language === 'c') {
+    return code.includes('scanf');
+  }
+  return false;
+};
+
+// Simulate execution with inputs
+const simulateInputExecution = (code: string, language: ProgrammingLanguage): string => {
+  let output = '';
+  
+  if (language === 'python') {
+    if (code.includes('input(') && code.includes('print(')) {
+      output = "Simulated input: 42\nOutput: 42\n";
+      
+      // If we detect calculation with input, add calculated output
+      if (code.includes('+') || code.includes('-') || code.includes('*') || code.includes('/')) {
+        output += "Calculated result: 84";
+      }
+    } else {
+      output = "Simulated input: 42";
+    }
+  } else if (language === 'java') {
+    if (code.includes('Scanner') && code.includes('System.out.print')) {
+      output = "Simulated input: 42\nOutput: 42\n";
+      
+      if (code.includes('+') || code.includes('-') || code.includes('*') || code.includes('/')) {
+        output += "Calculated result: 84";
+      }
+    } else {
+      output = "Simulated input: 42";
+    }
+  } else if (language === 'cpp') {
+    if (code.includes('cin >>') && code.includes('cout <<')) {
+      output = "Simulated input: 42\nOutput: 42\n";
+      
+      if (code.includes('+') || code.includes('-') || code.includes('*') || code.includes('/')) {
+        output += "Calculated result: 84";
+      }
+    } else {
+      output = "Simulated input: 42";
+    }
+  } else if (language === 'c') {
+    if (code.includes('scanf') && code.includes('printf')) {
+      output = "Simulated input: 42\nOutput: 42\n";
+      
+      if (code.includes('+') || code.includes('-') || code.includes('*') || code.includes('/')) {
+        output += "Calculated result: 84";
+      }
+    } else {
+      output = "Simulated input: 42";
+    }
+  }
+  
+  return output;
 };
 
 // Detect if code implements bubble sort
@@ -192,16 +310,17 @@ const simulateSelectionSort = (language: ProgrammingLanguage): string => {
 
 // Detect if code is Fibonacci implementation
 const isFibonacci = (code: string, language: ProgrammingLanguage): boolean => {
-  return (code.includes('fibonacci') || code.includes('Fibonacci')) &&
-         (code.includes('n-1') || code.includes('n - 1')) &&
-         (code.includes('n-2') || code.includes('n - 2'));
+  return (code.toLowerCase().includes('fibonacci') || code.toLowerCase().includes('fib')) &&
+         ((code.includes('n-1') || code.includes('n - 1')) &&
+         (code.includes('n-2') || code.includes('n - 2')) ||
+         (code.includes('a + b') || code.includes('a+b')));
 };
 
 // Simulate Fibonacci calculation output
 const simulateFibonacci = (code: string, language: ProgrammingLanguage): string => {
   // Try to extract the fibonacci argument
   let n = 10; // Default
-  const fibRegex = /fibonacci\s*\(\s*(\d+)\s*\)/i;
+  const fibRegex = /fib\w*\s*\(\s*(\d+)\s*\)/i;
   const match = code.match(fibRegex);
   if (match && match[1]) {
     n = parseInt(match[1], 10);
@@ -211,14 +330,14 @@ const simulateFibonacci = (code: string, language: ProgrammingLanguage): string 
   const result = calculateFibonacci(n);
   
   if (language === 'java') {
-    return `Fibonacci(${n}) = ${result}`;
+    return `Input: n = ${n}\nFibonacci(${n}) = ${result}`;
   } else if (language === 'python') {
-    return `Fibonacci(${n}) = ${result}`;
+    return `Input: n = ${n}\nFibonacci(${n}) = ${result}`;
   } else if (language === 'cpp' || language === 'c') {
-    return `Fibonacci(${n}) = ${result}`;
+    return `Input: n = ${n}\nFibonacci(${n}) = ${result}`;
   }
   
-  return `Fibonacci(${n}) = ${result}`;
+  return `Input: n = ${n}\nFibonacci(${n}) = ${result}`;
 };
 
 // Extract and simulate execution of print statements
@@ -226,11 +345,18 @@ const extractPrintStatements = (code: string, language: ProgrammingLanguage): st
   let output = '';
   
   if (language === 'python') {
-    const printRegex = /print\s*\(\s*["']?(.*?)["']?\s*\)/g;
+    // Updated regex to better capture print content
+    const printRegex = /print\s*\(\s*f?["']?(.*?)["']?\s*(?:,|\))/g;
     let printMatch;
     
     while ((printMatch = printRegex.exec(code)) !== null) {
       output += printMatch[1] + '\n';
+    }
+    
+    // Also check for print without quotes (for variables and expressions)
+    const printVarRegex = /print\s*\(\s*([a-zA-Z0-9_]+)\s*\)/g;
+    while ((printMatch = printVarRegex.exec(code)) !== null) {
+      output += `Variable ${printMatch[1]}: 42\n`;
     }
   } 
   else if (language === 'java') {
@@ -245,6 +371,12 @@ const extractPrintStatements = (code: string, language: ProgrammingLanguage): st
     while ((printMatch = printRegex.exec(code)) !== null) {
       output += printMatch[1];
     }
+    
+    // Check for variable printing
+    const printVarRegex = /System\.out\.print(?:ln)?\s*\(\s*([a-zA-Z0-9_]+)\s*\)/g;
+    while ((printMatch = printVarRegex.exec(code)) !== null) {
+      output += `Variable ${printMatch[1]}: 42\n`;
+    }
   } 
   else if (language === 'cpp') {
     const coutRegex = /cout\s*<<\s*["']?(.*?)["']?(?:\s*<<\s*endl)?/g;
@@ -255,6 +387,14 @@ const extractPrintStatements = (code: string, language: ProgrammingLanguage): st
         output += printMatch[1] + '\n';
       } else {
         output += printMatch[1];
+      }
+    }
+    
+    // Check for variable output
+    const coutVarRegex = /cout\s*<<\s*([a-zA-Z0-9_]+)/g;
+    while ((printMatch = coutVarRegex.exec(code)) !== null) {
+      if (printMatch[1] !== 'endl') {
+        output += `Variable ${printMatch[1]}: 42\n`;
       }
     }
   } 
@@ -274,13 +414,13 @@ const extractPrintStatements = (code: string, language: ProgrammingLanguage): st
       // Simple format string parsing
       let formattedOutput = formatStr;
       if (formattedOutput.includes('%d')) {
-        formattedOutput = formattedOutput.replace(/%d/, args[0] || '0');
+        formattedOutput = formattedOutput.replace(/%d/, args[0] || '42');
       }
       if (formattedOutput.includes('%s')) {
-        formattedOutput = formattedOutput.replace(/%s/, args[0] || 'string');
+        formattedOutput = formattedOutput.replace(/%s/, args[0] || 'text');
       }
       if (formattedOutput.includes('%f')) {
-        formattedOutput = formattedOutput.replace(/%f/, args[0] || '0.0');
+        formattedOutput = formattedOutput.replace(/%f/, args[0] || '42.0');
       }
       
       output += formattedOutput + '\n';
@@ -325,9 +465,9 @@ const simulateArrayOutput = (language: ProgrammingLanguage): string => {
   const array = [1, 2, 3, 4, 5];
   
   if (language === 'python') {
-    return `[1, 2, 3, 4, 5]`;
+    return `Array/List elements: [1, 2, 3, 4, 5]`;
   } else if (language === 'java') {
-    return `Array elements: 1 2 3 4 5`;
+    return `Array elements: [1, 2, 3, 4, 5]`;
   } else if (language === 'cpp' || language === 'c') {
     return `Array elements: 1 2 3 4 5`;
   }
@@ -388,14 +528,14 @@ const simulateFactorial = (language: ProgrammingLanguage): string => {
   const factorial = 120; // 5!
   
   if (language === 'java') {
-    return `Factorial(${n}) = ${factorial}`;
+    return `Input: n = ${n}\nFactorial(${n}) = ${factorial}`;
   } else if (language === 'python') {
-    return `${factorial}`;
+    return `Input: n = ${n}\nFactorial(${n}) = ${factorial}`;
   } else if (language === 'cpp' || language === 'c') {
-    return `Factorial(${n}) = ${factorial}`;
+    return `Input: n = ${n}\nFactorial(${n}) = ${factorial}`;
   }
   
-  return `${factorial}`;
+  return `Input: n = ${n}\nFactorial(${n}) = ${factorial}`;
 };
 
 // Simulate complexity analysis with more accurate evaluations
