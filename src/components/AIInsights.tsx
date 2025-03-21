@@ -1,14 +1,17 @@
 
 import React, { useState } from 'react';
-import { Lightbulb, Sparkles, Code, AlertCircle, ArrowRight, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Lightbulb, Sparkles, Code, AlertCircle, ArrowRight, ThumbsUp, ThumbsDown, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Insight {
   type: 'suggestion' | 'optimization' | 'warning';
   title: string;
   description: string;
   code?: string;
+  rationale?: string;
+  impact?: string;
 }
 
 interface AIInsightsProps {
@@ -24,6 +27,7 @@ const AIInsights: React.FC<AIInsightsProps> = ({
 }) => {
   const [activeInsight, setActiveInsight] = useState<number | null>(0);
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, boolean>>({});
+  const [codeApplied, setCodeApplied] = useState<Record<number, boolean>>({});
 
   if (!insights || insights.length === 0) {
     return (
@@ -53,6 +57,13 @@ const AIInsights: React.FC<AIInsightsProps> = ({
     console.log(`Feedback for insight ${index}: ${positive ? 'positive' : 'negative'}`);
   };
 
+  const handleApplyCode = (index: number, code: string) => {
+    if (onApplyCode) {
+      onApplyCode(code);
+      setCodeApplied(prev => ({ ...prev, [index]: true }));
+    }
+  };
+
   return (
     <div className={cn("rounded-lg border overflow-hidden", className)}>
       <div className="px-4 py-2 border-b bg-secondary/50 flex items-center">
@@ -67,13 +78,15 @@ const AIInsights: React.FC<AIInsightsProps> = ({
               key={index}
               className={cn(
                 "w-full px-4 py-3 text-left border-b hover:bg-secondary/50 transition-colors",
-                activeInsight === index ? "bg-secondary/70" : "bg-transparent"
+                activeInsight === index ? "bg-secondary/70" : "bg-transparent",
+                codeApplied[index] ? "border-l-4 border-l-green-500" : ""
               )}
               onClick={() => setActiveInsight(index)}
             >
               <div className="flex items-center">
                 {getInsightIcon(insight.type)}
                 <span className="ml-2 font-medium text-sm truncate">{insight.title}</span>
+                {codeApplied[index] && <CheckCircle className="h-3 w-3 ml-auto text-green-500" />}
               </div>
             </button>
           ))}
@@ -87,12 +100,36 @@ const AIInsights: React.FC<AIInsightsProps> = ({
                 <h4 className="ml-2 font-medium">{insights[activeInsight].title}</h4>
               </div>
               
-              <p className="text-sm text-muted-foreground mb-4">
-                {insights[activeInsight].description}
-              </p>
+              <Tabs defaultValue="description" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="description">Description</TabsTrigger>
+                  {insights[activeInsight].impact && (
+                    <TabsTrigger value="impact">Impact</TabsTrigger>
+                  )}
+                  {insights[activeInsight].rationale && (
+                    <TabsTrigger value="rationale">Rationale</TabsTrigger>
+                  )}
+                </TabsList>
+                
+                <TabsContent value="description" className="text-sm text-muted-foreground mb-4">
+                  {insights[activeInsight].description}
+                </TabsContent>
+                
+                {insights[activeInsight].impact && (
+                  <TabsContent value="impact" className="text-sm text-muted-foreground mb-4">
+                    {insights[activeInsight].impact}
+                  </TabsContent>
+                )}
+                
+                {insights[activeInsight].rationale && (
+                  <TabsContent value="rationale" className="text-sm text-muted-foreground mb-4">
+                    {insights[activeInsight].rationale}
+                  </TabsContent>
+                )}
+              </Tabs>
               
               {insights[activeInsight].code && (
-                <div className="mb-4">
+                <div className="mb-4 mt-3">
                   <div className="bg-secondary/50 rounded-md p-3 mb-2">
                     <pre className="text-xs font-mono overflow-x-auto">
                       {insights[activeInsight].code}
@@ -101,11 +138,24 @@ const AIInsights: React.FC<AIInsightsProps> = ({
                   
                   <Button 
                     size="sm"
-                    className="text-xs"
-                    onClick={() => onApplyCode?.(insights[activeInsight].code!)}
+                    className={cn(
+                      "text-xs",
+                      codeApplied[activeInsight] ? "bg-green-500 hover:bg-green-600" : ""
+                    )}
+                    onClick={() => handleApplyCode(activeInsight, insights[activeInsight].code!)}
+                    disabled={codeApplied[activeInsight]}
                   >
-                    <Code className="h-3 w-3 mr-1" />
-                    Apply Change
+                    {codeApplied[activeInsight] ? (
+                      <>
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Applied
+                      </>
+                    ) : (
+                      <>
+                        <Code className="h-3 w-3 mr-1" />
+                        Replace Code
+                      </>
+                    )}
                   </Button>
                 </div>
               )}

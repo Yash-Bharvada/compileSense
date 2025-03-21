@@ -15,6 +15,8 @@ export interface Insight {
   title: string;
   description: string;
   code?: string;
+  rationale?: string;
+  impact?: string;
 }
 
 // Maximum execution time before timeout (ms)
@@ -548,18 +550,25 @@ export const analyzeComplexity = async (
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 2000));
   
-  // For demo purposes, check if the code contains different algorithms
-  const hasFibonacci = code.includes('fibonacci') && 
-                      (code.includes('return') || code.includes('return ')) && 
-                      (code.includes('n-1') || code.includes('n - 1')) && 
-                      (code.includes('n-2') || code.includes('n - 2'));
+  // Enhanced code analysis logic - detect more code patterns
+  const hasRecursion = code.includes('return') && 
+                      ((code.includes('(') && code.includes(')')) || 
+                      code.includes('call'));
   
-  const hasLoop = code.includes('for') || code.includes('while');
-  const hasNestedLoop = (code.match(/for/g) || []).length > 1 || 
-                        (code.match(/while/g) || []).length > 1 ||
-                        (code.includes('for') && code.includes('while'));
+  const hasDynamicProgramming = code.includes('memo') || 
+                               (code.includes('dp') && (code.includes('array') || code.includes('[]')));
   
-  if (hasFibonacci) {
+  const hasBinarySearch = code.includes('mid') && code.includes('left') && code.includes('right');
+  
+  const hasDivideAndConquer = code.includes('merge') || 
+                             (code.includes('divide') && code.includes('conquer'));
+  
+  const hasGreedy = code.includes('greedy') || 
+                   (code.includes('sort') && code.includes('max') && code.includes('pick'));
+                   
+  // Check for specific code patterns to provide more accurate analysis
+  if (hasFibonacci(code, language)) {
+    // ... keep existing code (fibonacci analysis)
     return {
       timeComplexity: {
         best: 'O(2^n)',
@@ -567,9 +576,50 @@ export const analyzeComplexity = async (
         worst: 'O(2^n)'
       },
       spaceComplexity: 'O(n)',
-      analysis: 'The recursive implementation of Fibonacci has exponential time complexity due to repeated calculations of the same values. Consider using dynamic programming or memoization to improve performance.'
+      analysis: 'The recursive implementation of Fibonacci has exponential time complexity due to repeated calculations of the same values. Each function call branches into two more calls until reaching the base cases, creating an exponential number of function calls. The space complexity is O(n) due to the maximum recursion depth.'
     };
-  } else if (hasNestedLoop) {
+  } else if (hasDynamicProgramming) {
+    return {
+      timeComplexity: {
+        best: 'O(n)',
+        average: 'O(n)',
+        worst: 'O(n)'
+      },
+      spaceComplexity: 'O(n)',
+      analysis: 'This dynamic programming approach has linear time complexity as it computes each subproblem exactly once and stores the results to avoid redundant calculations. The space complexity is also linear due to the memoization table or DP array.'
+    };
+  } else if (hasBinarySearch) {
+    return {
+      timeComplexity: {
+        best: 'O(1)',
+        average: 'O(log n)',
+        worst: 'O(log n)'
+      },
+      spaceComplexity: 'O(1)',
+      analysis: 'Binary search has logarithmic time complexity as it divides the search space in half with each comparison. The best case is O(1) when the target is found at the middle position initially. Space complexity is constant as it only uses a fixed number of variables.'
+    };
+  } else if (hasDivideAndConquer) {
+    return {
+      timeComplexity: {
+        best: 'O(n log n)',
+        average: 'O(n log n)',
+        worst: 'O(n log n)'
+      },
+      spaceComplexity: 'O(n)',
+      analysis: 'This divide and conquer algorithm (likely merge sort or similar) has O(n log n) time complexity. It recursively divides the problem and combines solutions, with log n levels of recursion and n work at each level. The space complexity is O(n) for the auxiliary arrays needed during merging.'
+    };
+  } else if (hasGreedy) {
+    return {
+      timeComplexity: {
+        best: 'O(n log n)',
+        average: 'O(n log n)',
+        worst: 'O(n log n)'
+      },
+      spaceComplexity: 'O(1)',
+      analysis: 'This greedy algorithm has O(n log n) time complexity dominated by the sorting operation. After sorting, it makes a single pass through the data to make greedy choices. The space complexity is constant if sorting is done in-place.'
+    };
+  } else if (isNestedLoops(code)) {
+    // ... keep existing code (nested loops analysis)
     return {
       timeComplexity: {
         best: 'O(n²)',
@@ -577,9 +627,10 @@ export const analyzeComplexity = async (
         worst: 'O(n²)'
       },
       spaceComplexity: 'O(1)',
-      analysis: 'The code contains nested loops, resulting in quadratic time complexity. Each element in the outer loop iterates through all elements in the inner loop.'
+      analysis: 'The code contains nested loops, resulting in quadratic time complexity. The outer loop executes n times, and for each iteration, the inner loop also executes up to n times, leading to approximately n² total operations. Space complexity is constant as it only uses a fixed amount of additional memory regardless of input size.'
     };
-  } else if (hasLoop) {
+  } else if (hasLoop(code)) {
+    // ... keep existing code (single loop analysis)
     return {
       timeComplexity: {
         best: 'O(n)',
@@ -587,7 +638,7 @@ export const analyzeComplexity = async (
         worst: 'O(n)'
       },
       spaceComplexity: 'O(1)',
-      analysis: 'The code has linear time complexity as it processes each element once with a single loop. Space complexity is constant as it uses a fixed amount of memory regardless of input size.'
+      analysis: 'The code has linear time complexity as it processes each element once with a single loop. Each element requires a constant number of operations, resulting in linear scaling with input size. Space complexity is constant as it uses a fixed amount of memory regardless of input size.'
     };
   }
   
@@ -599,11 +650,39 @@ export const analyzeComplexity = async (
       worst: 'O(1)'
     },
     spaceComplexity: 'O(1)',
-    analysis: 'The code appears to have constant time complexity as it does not contain loops or recursive calls. It processes a fixed number of operations regardless of input size.'
+    analysis: 'The code appears to have constant time complexity as it does not contain loops or recursive calls. It processes a fixed number of operations regardless of input size, resulting in constant time execution.'
   };
 };
 
-// Simulate AI insights
+// Function to check if code has nested loops
+const isNestedLoops = (code: string): boolean => {
+  const forLoopMatches = code.match(/for\s*\(/g) || [];
+  const whileLoopMatches = code.match(/while\s*\(/g) || [];
+  
+  return forLoopMatches.length + whileLoopMatches.length >= 2 &&
+         (code.includes('for') && code.includes('for', code.indexOf('for') + 3)) ||
+         (code.includes('while') && code.includes('while', code.indexOf('while') + 5)) ||
+         (code.includes('for') && code.includes('while')) ||
+         (code.includes('while') && code.includes('for'));
+};
+
+// Enhanced function to detect if the code is a Fibonacci algorithm
+const hasFibonacci = (code: string, language: ProgrammingLanguage): boolean => {
+  // ... keep existing code (fibonacci detection)
+  return (code.toLowerCase().includes('fibonacci') || code.toLowerCase().includes('fib')) &&
+         ((code.includes('n-1') || code.includes('n - 1')) &&
+         (code.includes('n-2') || code.includes('n - 2')) ||
+         (code.includes('a + b') || code.includes('a+b')));
+};
+
+// Check if code has a loop
+const hasLoop = (code: string): boolean => {
+  // ... keep existing code (loop detection)
+  return code.includes('for ') || code.includes('for(') || 
+         code.includes('while ') || code.includes('while(');
+};
+
+// Simulate AI insights with more detailed and accurate information
 export const getAIInsights = async (
   code: string, 
   language: ProgrammingLanguage,
@@ -614,63 +693,259 @@ export const getAIInsights = async (
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 1000));
   
-  // For demo purposes, check if the code contains a recursive fibonacci function
-  const hasFibonacci = code.includes('fibonacci') && code.includes('return') && 
-                      (code.includes('n-1') || code.includes('n - 1')) && 
-                      (code.includes('n-2') || code.includes('n - 2'));
+  // Enhanced insights based on code patterns
+  const insights: Insight[] = [];
   
-  const hasLoop = code.includes('for') || code.includes('while');
-  const hasPrint = language === 'python' && code.includes('print');
-  const hasSystemOut = language === 'java' && code.includes('System.out');
-  const hasCout = language === 'cpp' && code.includes('cout');
-  const hasPrintf = (language === 'c' || language === 'cpp') && code.includes('printf');
-  
-  if (hasFibonacci) {
-    // Return optimization insights for fibonacci
-    return [
-      {
+  // Check for recursive Fibonacci implementation
+  if (hasFibonacci(code, language) && 
+      code.includes('return') && 
+      (code.includes('n-1') || code.includes('n - 1')) && 
+      (code.includes('n-2') || code.includes('n - 2'))) {
+    
+    insights.push({
+      type: 'optimization',
+      title: 'Use Memoization',
+      description: 'The current recursive implementation recalculates the same values multiple times, leading to inefficient execution.',
+      rationale: 'Memoization stores already computed values, eliminating redundant calculations and significantly improving performance.',
+      impact: 'Reduces time complexity from exponential O(2^n) to linear O(n), making the algorithm practical for larger inputs.',
+      code: generateMemoizationCode(language)
+    });
+    
+    insights.push({
+      type: 'optimization',
+      title: 'Use Iteration Instead of Recursion',
+      description: 'An iterative approach can be more efficient for calculating Fibonacci numbers.',
+      rationale: 'Iterative solutions avoid the overhead of recursive function calls and potential stack overflow issues for large inputs.',
+      impact: 'Reduces both time and space complexity, while maintaining the same mathematical result.',
+      code: generateIterativeFibonacciCode(language)
+    });
+    
+    insights.push({
+      type: 'warning',
+      title: 'Stack Overflow Risk',
+      description: 'The current recursive implementation may cause stack overflow for large values of n (typically n > 40-50).',
+      rationale: 'Each recursive call adds a new frame to the call stack. With exponential growth, large inputs quickly exceed available stack space.',
+      impact: 'The program will crash for moderately large inputs, making it unreliable for production use.',
+      code: generateBaseCheckCode(language)
+    });
+    
+  } else if (isNestedLoops(code)) {
+    insights.push({
+      type: 'optimization',
+      title: 'Consider Time Complexity',
+      description: 'Your code contains nested loops, resulting in quadratic O(n²) time complexity.',
+      rationale: 'Nested loops process each element multiple times, which can be inefficient for large datasets.',
+      impact: 'May lead to performance issues with large inputs. Consider if a more efficient algorithm exists for your specific problem.',
+      code: null
+    });
+    
+    insights.push({
+      type: 'suggestion',
+      title: 'Early Termination',
+      description: 'Consider adding break conditions to exit loops early when a solution is found.',
+      rationale: 'Early termination can significantly improve average-case performance while maintaining correctness.',
+      impact: 'Could improve performance substantially for cases where the target is found early in the dataset.',
+      code: generateEarlyTerminationCode(language)
+    });
+    
+  } else if (hasLoop(code)) {
+    insights.push({
+      type: 'suggestion',
+      title: 'Handle Edge Cases',
+      description: 'Ensure your loop properly handles edge cases like empty collections or boundary conditions.',
+      rationale: 'Edge cases are often sources of bugs. Explicit handling improves robustness and readability.',
+      impact: 'Prevents potential runtime errors and unexpected behavior with unusual inputs.',
+      code: generateEdgeCaseCode(language)
+    });
+    
+    if (code.includes('array') || code.includes('list') || code.includes('[]')) {
+      insights.push({
         type: 'optimization',
-        title: 'Use Memoization',
-        description: 'The current recursive implementation recalculates the same values multiple times. Using memoization can reduce time complexity from O(2^n) to O(n).',
-        code: language === 'python'
-            ? `# Optimized with memoization
+        title: 'Consider Pre-allocation',
+        description: 'If your code builds a result collection inside a loop, consider pre-allocating its size.',
+        rationale: 'Dynamic resizing of collections (like ArrayList or Python lists) can be expensive when done repeatedly.',
+        impact: 'Improves performance by avoiding multiple memory reallocations during execution.',
+        code: generatePreallocationCode(language)
+      });
+    }
+  }
+  
+  // Add language-specific insights
+  if (language === 'python') {
+    if (code.includes('for ') && !code.includes('enumerate(')) {
+      insights.push({
+        type: 'suggestion',
+        title: 'Use enumerate() for Counter Variables',
+        description: 'When you need both the index and value in a loop, use enumerate() instead of manual indexing.',
+        rationale: 'enumerate() is more Pythonic and less error-prone than maintaining a separate counter variable.',
+        impact: 'Improves code readability and reduces the chance of off-by-one errors.',
+        code: `# Instead of:
+i = 0
+for item in items:
+    print(i, item)
+    i += 1
+
+# Use enumerate:
+for i, item in enumerate(items):
+    print(i, item)`
+      });
+    }
+    
+    if (code.includes('if ') && code.includes('else') && !code.includes('elif')) {
+      insights.push({
+        type: 'suggestion',
+        title: 'Consider Using Conditional Expressions',
+        description: 'For simple if-else statements that assign values, use Python\'s conditional expressions.',
+        rationale: 'Conditional expressions are more concise and expressive for simple value assignments.',
+        impact: 'Reduces code verbosity while maintaining readability for simple conditions.',
+        code: `# Instead of:
+if condition:
+    x = value1
+else:
+    x = value2
+
+# Use:
+x = value1 if condition else value2`
+      });
+    }
+  } else if (language === 'java') {
+    if (code.includes('for (') && code.includes('get(') && !code.includes('forEach')) {
+      insights.push({
+        type: 'suggestion',
+        title: 'Use Enhanced For Loop or forEach()',
+        description: 'For iterating over collections, consider using enhanced for loops or the forEach() method.',
+        rationale: 'Modern Java idioms improve readability and reduce the chance of indexing errors.',
+        impact: 'Makes code more concise and less error-prone for collection traversal.',
+        code: `// Instead of:
+for (int i = 0; i < list.size(); i++) {
+    Item item = list.get(i);
+    // process item
+}
+
+// Use:
+for (Item item : list) {
+    // process item
+}
+
+// Or:
+list.forEach(item -> {
+    // process item
+});`
+      });
+    }
+  } else if (language === 'cpp') {
+    if (code.includes('for (') && code.includes('push_back') && !code.includes('reserve')) {
+      insights.push({
+        type: 'optimization',
+        title: 'Reserve Vector Capacity',
+        description: 'When building vectors in a loop, reserve capacity upfront if the size is known.',
+        rationale: 'Calling reserve() prevents multiple reallocations and copies as the vector grows.',
+        impact: 'Improves performance by reducing memory management overhead during execution.',
+        code: `// Instead of:
+std::vector<int> result;
+for (int i = 0; i < n; i++) {
+    result.push_back(calculate(i));
+}
+
+// Use:
+std::vector<int> result;
+result.reserve(n);  // Reserve space for n elements
+for (int i = 0; i < n; i++) {
+    result.push_back(calculate(i));
+}`
+      });
+    }
+  }
+  
+  // If we don't have specific insights, add generic ones
+  if (insights.length === 0) {
+    insights.push({
+      type: 'suggestion',
+      title: 'Add Error Handling',
+      description: 'Consider adding error handling to make your code more robust.',
+      rationale: 'Proper error handling prevents crashes and improves user experience when unexpected situations occur.',
+      impact: 'Makes your code more reliable and easier to debug when issues arise.',
+      code: null
+    });
+    
+    insights.push({
+      type: 'suggestion',
+      title: 'Add Documentation',
+      description: 'Adding comments and documentation can make your code more maintainable.',
+      rationale: 'Well-documented code is easier for others (and your future self) to understand and modify.',
+      impact: 'Improves long-term maintainability and helps onboard new developers to the codebase.',
+      code: null
+    });
+  }
+  
+  return insights;
+};
+
+// Helper function to generate memoization code examples
+const generateMemoizationCode = (language: ProgrammingLanguage): string => {
+  if (language === 'python') {
+    return `# Optimized with memoization
 def fibonacci(n, memo={}):
     if n in memo:
         return memo[n]
     if n <= 1:
         return n
     memo[n] = fibonacci(n-1, memo) + fibonacci(n-2, memo)
-    return memo[n]`
-            : language === 'java'
-              ? `// Optimized with memoization
-public static int fibonacci(int n, Map<Integer, Integer> memo) {
+    return memo[n]`;
+  } else if (language === 'java') {
+    return `// Optimized with memoization
+import java.util.HashMap;
+import java.util.Map;
+
+public static int fibonacci(int n) {
+    return fibMemo(n, new HashMap<>());
+}
+
+private static int fibMemo(int n, Map<Integer, Integer> memo) {
     if (memo.containsKey(n)) return memo.get(n);
     if (n <= 1) return n;
-    memo.put(n, fibonacci(n-1, memo) + fibonacci(n-2, memo));
+    memo.put(n, fibMemo(n-1, memo) + fibMemo(n-2, memo));
     return memo.get(n);
-}`
-              : language === 'cpp' || language === 'c'
-                ? `// Optimized with memoization
-int fibonacci(int n, std::unordered_map<int, int>& memo) {
+}`;
+  } else if (language === 'cpp') {
+    return `// Optimized with memoization
+#include <unordered_map>
+
+int fibonacci(int n) {
+    std::unordered_map<int, int> memo;
+    return fibMemo(n, memo);
+}
+
+int fibMemo(int n, std::unordered_map<int, int>& memo) {
     if (memo.find(n) != memo.end()) return memo[n];
     if (n <= 1) return n;
-    memo[n] = fibonacci(n-1, memo) + fibonacci(n-2, memo);
+    memo[n] = fibMemo(n-1, memo) + fibMemo(n-2, memo);
     return memo[n];
-}`
-                : `// Optimized with memoization
-int fibonacci(int n, int memo[]) {
-    if (memo[n] != -1) return memo[n];
+}`;
+  } else {
+    return `// Optimized with memoization
+int fibMemo(int n, int memo[], int size) {
+    if (n < size && memo[n] != -1) return memo[n];
     if (n <= 1) return n;
-    memo[n] = fibonacci(n-1, memo) + fibonacci(n-2, memo);
-    return memo[n];
-}`
-      },
-      {
-        type: 'optimization',
-        title: 'Use Iteration Instead of Recursion',
-        description: 'An iterative approach can be more efficient for calculating Fibonacci numbers, avoiding stack overhead and potential stack overflow for large inputs.',
-        code: language === 'python'
-            ? `# Iterative implementation
+    
+    int result = fibMemo(n-1, memo, size) + fibMemo(n-2, memo, size);
+    if (n < size) memo[n] = result;
+    return result;
+}
+
+int fibonacci(int n) {
+    int size = n+1 > 1000 ? 1000 : n+1;
+    int memo[size];
+    for (int i = 0; i < size; i++) memo[i] = -1;
+    return fibMemo(n, memo, size);
+}`;
+  }
+};
+
+// Helper function to generate iterative Fibonacci code examples
+const generateIterativeFibonacciCode = (language: ProgrammingLanguage): string => {
+  if (language === 'python') {
+    return `# Iterative implementation
 def fibonacci(n):
     if n <= 1:
         return n
@@ -679,9 +954,9 @@ def fibonacci(n):
         c = a + b
         a = b
         b = c
-    return b`
-            : language === 'java'
-              ? `// Iterative implementation
+    return b`;
+  } else if (language === 'java') {
+    return `// Iterative implementation
 public static int fibonacci(int n) {
     if (n <= 1) return n;
     int a = 0, b = 1;
@@ -691,9 +966,9 @@ public static int fibonacci(int n) {
         b = c;
     }
     return b;
-}`
-              : language === 'cpp' || language === 'c'
-                ? `// Iterative implementation
+}`;
+  } else if (language === 'cpp' || language === 'c') {
+    return `// Iterative implementation
 int fibonacci(int n) {
     if (n <= 1) return n;
     int a = 0, b = 1;
@@ -703,81 +978,240 @@ int fibonacci(int n) {
         b = c;
     }
     return b;
-}`
-                : `// Iterative implementation
-int fibonacci(int n) {
-    if (n <= 1) return n;
-    int a = 0, b = 1;
-    for (int i = 2; i <= n; i++) {
-        int c = a + b;
-        a = b;
-        b = c;
-    }
-    return b;
-}`
-      },
-      {
-        type: 'warning',
-        title: 'Stack Overflow Risk',
-        description: 'The current recursive implementation may cause stack overflow for large values of n (typically n > 40-50). Consider adding a base case check for large inputs.',
-        code: null
-      }
-    ];
-  } else if (hasLoop) {
-    return [
-      {
-        type: 'suggestion',
-        title: 'Consider Edge Cases',
-        description: 'Make sure your loop handles edge cases correctly, such as empty collections or boundary conditions.',
-        code: null
-      },
-      {
-        type: 'optimization',
-        title: 'Early Termination',
-        description: 'Consider adding early termination conditions to your loop when the goal is achieved before iterating through all elements.',
-        code: null
-      }
-    ];
-  } else if (hasPrint || hasSystemOut || hasCout || hasPrintf) {
-    return [
-      {
-        type: 'suggestion',
-        title: 'Add Error Handling',
-        description: 'Consider adding error handling around your output statements to make your code more robust.',
-        code: null
-      },
-      {
-        type: 'suggestion',
-        title: 'Format Output',
-        description: 'Use formatting to make your output more readable and structured.',
-        code: language === 'python'
-            ? `# Formatted output
-print(f"The result is: {result}")` 
-            : language === 'java'
-              ? `// Formatted output
-System.out.printf("The result is: %d\\n", result);`
-              : language === 'cpp'
-                ? `// Formatted output
-std::cout << "The result is: " << result << std::endl;`
-                : `// Formatted output
-printf("The result is: %d\\n", result);`
-      }
-    ];
+}`;
   }
   
-  // Default insights
-  return [
-    {
-      type: 'suggestion',
-      title: 'Add Error Handling',
-      description: 'Consider adding error handling to make your code more robust. This will help catch and manage unexpected inputs or runtime errors.',
-      code: null
-    },
-    {
-      type: 'suggestion',
-      title: 'Add Documentation',
-      description: 'Adding comments and documentation can make your code more maintainable and easier for others to understand.',
-      code: null
+  return '';
+};
+
+// Helper function to generate edge case handling code
+const generateEdgeCaseCode = (language: ProgrammingLanguage): string => {
+  if (language === 'python') {
+    return `# With edge case handling
+def process_list(items):
+    # Handle empty list case
+    if not items:
+        return []
+    
+    result = []
+    for item in items:
+        # Handle None items
+        if item is None:
+            continue
+        result.append(process_item(item))
+    return result`;
+  } else if (language === 'java') {
+    return `// With edge case handling
+public List<Result> processItems(List<Item> items) {
+    // Handle null or empty list
+    if (items == null || items.isEmpty()) {
+        return Collections.emptyList();
     }
-  ];
+    
+    List<Result> results = new ArrayList<>();
+    for (Item item : items) {
+        // Handle null items
+        if (item == null) {
+            continue;
+        }
+        results.add(processItem(item));
+    }
+    return results;
+}`;
+  } else if (language === 'cpp') {
+    return `// With edge case handling
+std::vector<Result> processItems(const std::vector<Item>& items) {
+    // Handle empty vector
+    if (items.empty()) {
+        return {};
+    }
+    
+    std::vector<Result> results;
+    results.reserve(items.size());
+    for (const auto& item : items) {
+        // Handle invalid items
+        if (!item.isValid()) {
+            continue;
+        }
+        results.push_back(processItem(item));
+    }
+    return results;
+}`;
+  } else {
+    return `// With edge case handling
+Result* processItems(Item* items, int size, int* resultSize) {
+    // Handle null or empty array
+    if (items == NULL || size <= 0) {
+        *resultSize = 0;
+        return NULL;
+    }
+    
+    // Pre-allocate result array
+    Result* results = (Result*)malloc(size * sizeof(Result));
+    int count = 0;
+    
+    for (int i = 0; i < size; i++) {
+        // Handle invalid items
+        if (!isValid(&items[i])) {
+            continue;
+        }
+        results[count++] = processItem(&items[i]);
+    }
+    
+    *resultSize = count;
+    return results;
+}`;
+  }
+};
+
+// Helper function to generate early termination code
+const generateEarlyTerminationCode = (language: ProgrammingLanguage): string => {
+  if (language === 'python') {
+    return `# With early termination
+def find_element(items, target):
+    for i, item in enumerate(items):
+        for j, sub_item in enumerate(item):
+            if sub_item == target:
+                return (i, j)  # Return immediately when found
+    return None  # Not found`;
+  } else if (language === 'java') {
+    return `// With early termination
+public Coordinates findElement(List<List<Integer>> matrix, int target) {
+    for (int i = 0; i < matrix.size(); i++) {
+        List<Integer> row = matrix.get(i);
+        for (int j = 0; j < row.size(); j++) {
+            if (row.get(j) == target) {
+                return new Coordinates(i, j);  // Return immediately when found
+            }
+        }
+    }
+    return null;  // Not found
+}`;
+  } else if (language === 'cpp') {
+    return `// With early termination
+std::optional<Coordinates> findElement(const std::vector<std::vector<int>>& matrix, int target) {
+    for (size_t i = 0; i < matrix.size(); i++) {
+        for (size_t j = 0; j < matrix[i].size(); j++) {
+            if (matrix[i][j] == target) {
+                return Coordinates{i, j};  // Return immediately when found
+            }
+        }
+    }
+    return std::nullopt;  // Not found
+}`;
+  } else {
+    return `// With early termination
+int findElement(int** matrix, int rows, int cols, int target, int* row, int* col) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (matrix[i][j] == target) {
+                *row = i;
+                *col = j;
+                return 1;  // Found
+            }
+        }
+    }
+    return 0;  // Not found
+}`;
+  }
+};
+
+// Helper function to generate preallocation code
+const generatePreallocationCode = (language: ProgrammingLanguage): string => {
+  if (language === 'python') {
+    return `# With pre-allocation
+def calculate_values(n):
+    # Pre-allocate the list with None values
+    results = [None] * n
+    for i in range(n):
+        results[i] = i * i
+    return results`;
+  } else if (language === 'java') {
+    return `// With pre-allocation
+public List<Integer> calculateValues(int n) {
+    // Pre-allocate ArrayList with initial capacity
+    List<Integer> results = new ArrayList<>(n);
+    for (int i = 0; i < n; i++) {
+        results.add(i * i);
+    }
+    return results;
+}`;
+  } else if (language === 'cpp') {
+    return `// With pre-allocation
+std::vector<int> calculateValues(int n) {
+    // Reserve capacity before adding elements
+    std::vector<int> results;
+    results.reserve(n);
+    for (int i = 0; i < n; i++) {
+        results.push_back(i * i);
+    }
+    return results;
+}`;
+  } else {
+    return `// With pre-allocation
+int* calculateValues(int n) {
+    // Allocate array with exact size needed
+    int* results = (int*)malloc(n * sizeof(int));
+    for (int i = 0; i < n; i++) {
+        results[i] = i * i;
+    }
+    return results;
+}`;
+  }
+};
+
+// Helper function to generate base case check code
+const generateBaseCheckCode = (language: ProgrammingLanguage): string => {
+  if (language === 'python') {
+    return `# With base case limit check
+def fibonacci(n, memo={}):
+    # Prevent stack overflow with large inputs
+    if n > 50:
+        return "Input too large for recursive solution"
+        
+    if n in memo:
+        return memo[n]
+    if n <= 1:
+        return n
+    memo[n] = fibonacci(n-1, memo) + fibonacci(n-2, memo)
+    return memo[n]`;
+  } else if (language === 'java') {
+    return `// With base case limit check
+public static int fibonacci(int n) {
+    // Prevent stack overflow with large inputs
+    if (n > 50) {
+        throw new IllegalArgumentException("Input too large for recursive solution");
+    }
+    
+    return fibHelper(n, new HashMap<>());
+}
+
+private static int fibHelper(int n, Map<Integer, Integer> memo) {
+    if (memo.containsKey(n)) return memo.get(n);
+    if (n <= 1) return n;
+    memo.put(n, fibHelper(n-1, memo) + fibHelper(n-2, memo));
+    return memo.get(n);
+}`;
+  } else if (language === 'cpp' || language === 'c') {
+    return `// With base case limit check
+int fibonacci(int n) {
+    // Prevent stack overflow with large inputs
+    if (n > 50) {
+        fprintf(stderr, "Input too large for recursive solution\\n");
+        return -1; // Error code
+    }
+    
+    std::unordered_map<int, int> memo;
+    return fibHelper(n, memo);
+}
+
+int fibHelper(int n, std::unordered_map<int, int>& memo) {
+    if (memo.find(n) != memo.end()) return memo[n];
+    if (n <= 1) return n;
+    memo[n] = fibHelper(n-1, memo) + fibHelper(n-2, memo);
+    return memo[n];
+}`;
+  }
+  
+  return '';
 };

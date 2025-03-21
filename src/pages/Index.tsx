@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 import CodeEditor from '@/components/CodeEditor';
@@ -100,7 +101,7 @@ const Index = () => {
           <div className="md:col-span-8 space-y-4">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-medium tracking-tight">
-                <span className="text-primary">Compile</span>Genius
+                <span className="text-primary">Compile</span>Sense
               </h1>
               <LanguageSelector 
                 selectedLanguage={language} 
@@ -158,7 +159,7 @@ const Index = () => {
       
       <footer className="border-t py-4">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          &copy; {new Date().getFullYear()} CompileGenius. All rights reserved.
+          &copy; {new Date().getFullYear()} CompileSense. All rights reserved.
         </div>
       </footer>
     </div>
