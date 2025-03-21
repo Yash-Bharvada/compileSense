@@ -14,7 +14,7 @@ const Index = () => {
   const [language, setLanguage] = useState<ProgrammingLanguage>('python');
   const [code, setCode] = useState('');
   const [executionResult, setExecutionResult] = useState<{
-    status: 'success' | 'error' | 'running';
+    status: 'success' | 'error' | 'running' | 'timeout';
     output: string;
     executionTime?: number;
   } | null>(null);
