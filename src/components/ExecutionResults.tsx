@@ -41,6 +41,11 @@ const ExecutionResults: React.FC<ExecutionResultsProps> = ({ result, className }
     running: 'border-blue-200 bg-blue-50 text-blue-900',
   }[result.status];
 
+  // Format the output if it's empty
+  const formattedOutput = result.output.trim() === '' ? 
+    (result.status === 'success' ? 'Program executed without any output.' : result.output) : 
+    result.output;
+
   return (
     <div className={cn("rounded-lg border transition-all overflow-hidden", className)}>
       <div className={cn("px-4 py-2 border-b flex items-center gap-2", statusClass)}>
@@ -53,7 +58,7 @@ const ExecutionResults: React.FC<ExecutionResultsProps> = ({ result, className }
         )}
       </div>
       <div className="p-4 max-h-80 overflow-y-auto">
-        <pre className="text-sm whitespace-pre-wrap font-mono">{result.output}</pre>
+        <pre className="text-sm whitespace-pre-wrap font-mono">{formattedOutput}</pre>
       </div>
     </div>
   );
